@@ -44,9 +44,6 @@ export default async function PickRolePage() {
               href={`/chat/${role.id}`}
               className="group block bg-[#FFFFFF] border border-[#E5E5E5] rounded-[4px] p-6 hover:border-[#0A0A0A] cursor-pointer transition-[border-color] duration-150 ease-in-out"
             >
-              <div className="text-[36px] leading-none mb-4 select-none">
-                {role.emoji}
-              </div>
               <div className="font-bold text-[15px] text-[#0A0A0A] mb-1.5 leading-snug">
                 {role.name}
               </div>
