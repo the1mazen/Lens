@@ -1,9 +1,28 @@
 import { createBrowserClient, createServerClient } from "@supabase/ssr"
 
-export const supabaseUrl =
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder-project.supabase.co"
-export const supabaseAnonKey =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-anon-key"
+function getValidSupabaseUrl(): string {
+  let url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
+  if (!url) {
+    return "https://placeholder-project.supabase.co"
+  }
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    url = `https://${url}`
+  }
+  try {
+    const parsed = new URL(url)
+    return parsed.origin
+  } catch {
+    return "https://placeholder-project.supabase.co"
+  }
+}
+
+function getValidSupabaseAnonKey(): string {
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()
+  return key && key.length > 0 ? key : "placeholder-anon-key"
+}
+
+export const supabaseUrl = getValidSupabaseUrl()
+export const supabaseAnonKey = getValidSupabaseAnonKey()
 
 export function createClientComponentClient() {
   return createBrowserClient(supabaseUrl, supabaseAnonKey)
@@ -35,7 +54,7 @@ export async function createServerComponentClient(context?: { cookies?: any }) {
             cookieStore.set(name, value, options)
           )
         } catch {
-          // Can be ignored if handled in middleware or server component
+          // Ignored if in Server Component
         }
       },
     },

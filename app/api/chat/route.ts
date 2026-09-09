@@ -3,9 +3,7 @@ import { createGroq } from "@ai-sdk/groq";
 import { streamText } from "ai";
 import { getRoleById } from "@/lib/roles";
 
-const groq = createGroq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
@@ -15,6 +13,10 @@ export async function POST(req: Request) {
     if (!role) {
       return NextResponse.json({ error: "Role not found" }, { status: 404 });
     }
+
+    const groq = createGroq({
+      apiKey: process.env.GROQ_API_KEY || "",
+    });
 
     const result = streamText({
       model: groq("llama-3.1-70b-versatile"),

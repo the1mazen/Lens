@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   let userMessage = "";
   try {
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "" });
     const body = await req.json();
     userMessage = body.userMessage ?? "";
     const roleName = body.roleName ?? "";

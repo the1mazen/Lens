@@ -1,19 +1,15 @@
 import { notFound, redirect } from "next/navigation"
 import type { Metadata } from "next"
-import { getRoleById, roles } from "@/lib/roles"
+import { getRoleById } from "@/lib/roles"
 import { ChatClient } from "@/components/chat-client"
 import { createServerComponentClient } from "@/lib/supabase"
+
+export const dynamic = "force-dynamic"
 
 interface ChatPageProps {
   params: Promise<{
     roleId: string
   }>
-}
-
-export async function generateStaticParams() {
-  return roles.map((role) => ({
-    roleId: role.id,
-  }))
 }
 
 export async function generateMetadata({

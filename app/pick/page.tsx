@@ -4,6 +4,8 @@ import { MobileNav } from "@/components/mobile-nav"
 import { roles } from "@/lib/roles"
 import { createServerComponentClient } from "@/lib/supabase"
 
+export const dynamic = "force-dynamic"
+
 export default async function PickRolePage() {
   const supabase = await createServerComponentClient()
   const {
