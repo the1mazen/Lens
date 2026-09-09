@@ -14,17 +14,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Role not found" }, { status: 404 });
     }
 
-    const groq = createGroq({
-      apiKey: process.env.GROQ_API_KEY || "",
-    });
+    const apiKey = process.env.GROQ_API_KEY || "";
+    if (!apiKey) {
+      console.error("GROQ_API_KEY is not configured");
+      return NextResponse.json(
+        { error: "GROQ_API_KEY not configured" },
+        { status: 500 }
+      );
+    }
+
+    const groq = createGroq({ apiKey });
 
     const result = streamText({
-      model: groq("llama-3.1-70b-versatile"),
+      model: groq("openai/gpt-oss-120b"),
       system: role.systemPrompt,
       messages,
     });
 
-    return result.toDataStreamResponse();
+    return result.toDataStreamResponse({
+      getErrorMessage: (err: any) => err?.message ?? "An error occurred",
+    });
   } catch (error: any) {
     if (
       error?.status === 429 ||

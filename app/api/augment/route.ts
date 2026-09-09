@@ -6,13 +6,19 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   let userMessage = "";
   try {
-    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "" });
     const body = await req.json();
     userMessage = body.userMessage ?? "";
     const roleName = body.roleName ?? "";
 
+    const apiKey = process.env.GROQ_API_KEY || "";
+    if (!apiKey) {
+      return NextResponse.json({ augmentedPrompt: userMessage });
+    }
+
+    const groq = new Groq({ apiKey });
+
     const completion = await groq.chat.completions.create({
-      model: "llama-3.1-8b-instant",
+      model: "openai/gpt-oss-20b",
       messages: [
         {
           role: "system",
@@ -40,10 +46,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ augmentedPrompt: userMessage });
     }
 
-    console.error("Error in /api/augment:", error);
-    return NextResponse.json(
-      { error: "Internal Server Error" },
-      { status: 500 }
-    );
+    console.error("Error in /api/augment (falling back to original message):", error);
+    return NextResponse.json({ augmentedPrompt: userMessage });
   }
 }
