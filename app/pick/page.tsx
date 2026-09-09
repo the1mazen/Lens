@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { MobileNav } from "@/components/mobile-nav"
+import { RoleGrid } from "@/components/role-grid"
 import { roles } from "@/lib/roles"
 import { createServerComponentClient } from "@/lib/supabase"
 
@@ -37,22 +38,7 @@ export default async function PickRolePage() {
         </div>
 
         {/* Grid of Role Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-          {roles.map((role) => (
-            <Link
-              key={role.id}
-              href={`/chat/${role.id}`}
-              className="group block bg-[#FFFFFF] border border-[#E5E5E5] rounded-[4px] p-6 hover:border-[#0A0A0A] cursor-pointer transition-[border-color] duration-150 ease-in-out"
-            >
-              <div className="font-bold text-[15px] text-[#0A0A0A] mb-1.5 leading-snug">
-                {role.name}
-              </div>
-              <div className="text-[13px] text-[#6B7280] leading-snug">
-                {role.tagline}
-              </div>
-            </Link>
-          ))}
-        </div>
+        <RoleGrid roles={roles} />
       </main>
 
       {/* ── SAME FOOTER AS LANDING PAGE ─────────────────────────────────── */}

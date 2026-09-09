@@ -211,10 +211,17 @@ export function ChatClient({ role }: ChatClientProps) {
               LENS
             </Link>
             <div className="h-4 w-px bg-[#E5E5E5] shrink-0" />
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-[24px] leading-none select-none shrink-0">
-                {role.emoji}
-              </span>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-7 h-7 bg-[#0A0A0A] shrink-0 rounded-none overflow-hidden flex items-center justify-center">
+                <img
+                  src={`/characters/${role.id}/profile.jpg`}
+                  alt={role.name}
+                  className="w-full h-full object-cover rounded-none"
+                  onError={(e) => {
+                    ;(e.target as HTMLElement).style.display = "none"
+                  }}
+                />
+              </div>
               <span className="font-bold text-[14px] text-[#0A0A0A] truncate">
                 {role.name}
               </span>
@@ -272,8 +279,15 @@ export function ChatClient({ role }: ChatClientProps) {
 
               return (
                 <div key={m.id} className="flex items-start gap-3 max-w-[70%]">
-                  <div className="w-8 h-8 rounded-full bg-[#0A0A0A] text-white flex items-center justify-center shrink-0 text-sm select-none">
-                    {role.emoji}
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 bg-[#0A0A0A] shrink-0 rounded-none overflow-hidden flex items-center justify-center">
+                    <img
+                      src={`/characters/${role.id}/profile.jpg`}
+                      alt={role.name}
+                      className="w-full h-full object-cover rounded-none"
+                      onError={(e) => {
+                        ;(e.target as HTMLElement).style.display = "none"
+                      }}
+                    />
                   </div>
                   <div className="bg-white border border-[#E5E5E5] rounded-none sm:rounded-[4px] p-4 text-[#0A0A0A] text-[15px] leading-relaxed break-words">
                     <div className="animate-in fade-in duration-100">
@@ -303,8 +317,15 @@ export function ChatClient({ role }: ChatClientProps) {
                   </div>
                 </div>
                 <div className="flex items-start gap-3 max-w-[70%]">
-                  <div className="w-8 h-8 rounded-full bg-[#0A0A0A] text-white flex items-center justify-center shrink-0 text-sm select-none">
-                    {role.emoji}
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 bg-[#0A0A0A] shrink-0 rounded-none overflow-hidden flex items-center justify-center">
+                    <img
+                      src={`/characters/${role.id}/profile.jpg`}
+                      alt={role.name}
+                      className="w-full h-full object-cover rounded-none"
+                      onError={(e) => {
+                        ;(e.target as HTMLElement).style.display = "none"
+                      }}
+                    />
                   </div>
                   <div className="bg-white border border-[#E5E5E5] rounded-none sm:rounded-[4px] p-4 text-[#0A0A0A] text-[15px]">
                     <span className="inline-flex items-center gap-1.5 py-1">
@@ -320,8 +341,15 @@ export function ChatClient({ role }: ChatClientProps) {
             {/* Streaming indicator: three animated dots before the first token arrives */}
             {showDotsIndicator && (
               <div className="flex items-start gap-3 max-w-[70%]">
-                <div className="w-8 h-8 rounded-full bg-[#0A0A0A] text-white flex items-center justify-center shrink-0 text-sm select-none">
-                  {role.emoji}
+                <div className="w-8 h-8 sm:w-9 sm:h-9 bg-[#0A0A0A] shrink-0 rounded-none overflow-hidden flex items-center justify-center">
+                  <img
+                    src={`/characters/${role.id}/profile.jpg`}
+                    alt={role.name}
+                    className="w-full h-full object-cover rounded-none"
+                    onError={(e) => {
+                      ;(e.target as HTMLElement).style.display = "none"
+                    }}
+                  />
                 </div>
                 <div className="bg-white border border-[#E5E5E5] rounded-none sm:rounded-[4px] p-4 text-[#0A0A0A] text-[15px]">
                   <span className="inline-flex items-center gap-1.5 py-1">
