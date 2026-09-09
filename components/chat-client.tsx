@@ -4,15 +4,48 @@ import React, { useState, useRef, useEffect } from "react"
 import Link from "next/link"
 import { useChat } from "ai/react"
 import { generateId } from "ai"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import { Role } from "@/lib/roles"
 
 interface ChatClientProps {
   role: Role
 }
 
+const markdownComponents = {
+  p: ({ children }: any) => (
+    <p className="mb-2.5 last:mb-0 leading-relaxed">{children}</p>
+  ),
+  strong: ({ children }: any) => (
+    <strong className="font-bold text-[#0A0A0A]">{children}</strong>
+  ),
+  em: ({ children }: any) => <em className="italic">{children}</em>,
+  ul: ({ children }: any) => (
+    <ul className="list-disc pl-5 my-2.5 space-y-1">{children}</ul>
+  ),
+  ol: ({ children }: any) => (
+    <ol className="list-decimal pl-5 my-2.5 space-y-1">{children}</ol>
+  ),
+  li: ({ children }: any) => <li className="leading-relaxed">{children}</li>,
+  code: ({ children }: any) => (
+    <code className="bg-[#F5F5F0] px-1.5 py-0.5 text-[13px] font-mono border border-[#E5E5E5] rounded-none">
+      {children}
+    </code>
+  ),
+  blockquote: ({ children }: any) => (
+    <blockquote className="border-l-2 border-[#0A0A0A] pl-3 my-2 text-[#6B7280] italic">
+      {children}
+    </blockquote>
+  ),
+}
+
 export function ChatClient({ role }: ChatClientProps) {
   const [showRateLimitBanner, setShowRateLimitBanner] = useState(false)
   const [isAugmenting, setIsAugmenting] = useState(false)
+  const [pendingMessage, setPendingMessage] = useState<{
+    id: string
+    text: string
+  } | null>(null)
   const [originalMessages, setOriginalMessages] = useState<Record<string, string>>({})
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -72,14 +105,14 @@ export function ChatClient({ role }: ChatClientProps) {
     }
   }, [showRateLimitBanner])
 
-  // Auto scroll to bottom
+  // Auto scroll to bottom smoothly
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages, isLoading, isAugmenting])
+  }, [messages, isLoading, isAugmenting, pendingMessage])
 
   // Auto-resize textarea up to 4 lines (~112px)
   useEffect(() => {
@@ -105,11 +138,12 @@ export function ChatClient({ role }: ChatClientProps) {
     // Generate unique ID for this user message
     const messageId = generateId()
 
-    // Store original message for UI rendering
+    // Store original message for UI rendering & show optimistic pending bubble
     setOriginalMessages((prev) => ({
       ...prev,
       [messageId]: originalMessage,
     }))
+    setPendingMessage({ id: messageId, text: originalMessage })
 
     setIsAugmenting(true)
     let augmentedPrompt = originalMessage
@@ -136,8 +170,8 @@ export function ChatClient({ role }: ChatClientProps) {
       setIsAugmenting(false)
     }
 
-    // Submit the augmented prompt to useChat for LLM inference,
-    // keeping the generated messageId matching our originalMessages map
+    // Submit augmented prompt to useChat for LLM inference
+    setPendingMessage(null)
     append({
       id: messageId,
       role: "user",
@@ -154,8 +188,11 @@ export function ChatClient({ role }: ChatClientProps) {
 
   const isBusy = isLoading || isAugmenting
   const lastMessage = messages[messages.length - 1]
-  const showStreamingIndicator =
+
+  // Show dots bubble if loading and the assistant message hasn't received its first token yet
+  const showDotsIndicator =
     isBusy &&
+    !pendingMessage &&
     (!lastMessage ||
       lastMessage.role === "user" ||
       (lastMessage.role === "assistant" && !lastMessage.content))
@@ -190,6 +227,7 @@ export function ChatClient({ role }: ChatClientProps) {
             onClick={() => {
               setMessages([])
               setOriginalMessages({})
+              setPendingMessage(null)
             }}
             className="bg-[#0A0A0A] text-white text-xs uppercase tracking-widest px-3.5 sm:px-4 py-2 font-medium rounded-none sm:rounded-sm hover:bg-black/90 transition-colors shrink-0"
           >
@@ -210,7 +248,7 @@ export function ChatClient({ role }: ChatClientProps) {
         {/* ── MESSAGE LIST (flex-1, overflow-y-auto, padding 24px) ──────── */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 w-full">
           <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
-            {messages.map((m) => {
+            {messages.map((m, index) => {
               const isUser = m.role === "user"
 
               if (isUser) {
@@ -229,20 +267,58 @@ export function ChatClient({ role }: ChatClientProps) {
               // Assistant message
               if (!m.content && isBusy) return null
 
+              const isLast = index === messages.length - 1
+              const isStreamingThis = isLast && isLoading
+
               return (
                 <div key={m.id} className="flex items-start gap-3 max-w-[70%]">
                   <div className="w-8 h-8 rounded-full bg-[#0A0A0A] text-white flex items-center justify-center shrink-0 text-sm select-none">
                     {role.emoji}
                   </div>
-                  <div className="bg-white border border-[#E5E5E5] rounded-none sm:rounded-[4px] p-4 text-[#0A0A0A] text-[15px] leading-relaxed whitespace-pre-wrap break-words">
-                    {m.content}
+                  <div className="bg-white border border-[#E5E5E5] rounded-none sm:rounded-[4px] p-4 text-[#0A0A0A] text-[15px] leading-relaxed break-words">
+                    <div className="animate-in fade-in duration-100">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={markdownComponents}
+                      >
+                        {m.content}
+                      </ReactMarkdown>
+                    </div>
+                    {isStreamingThis && (
+                      <span className="inline-block ml-0.5 font-mono text-sm text-[#0A0A0A] font-bold animate-pulse select-none">
+                        |
+                      </span>
+                    )}
                   </div>
                 </div>
               )
             })}
 
-            {/* Streaming indicator: three animated dots shown as expert bubble */}
-            {showStreamingIndicator && (
+            {/* Pending optimistic user message while prompt augmentation is running */}
+            {pendingMessage && (
+              <>
+                <div className="flex justify-end">
+                  <div className="max-w-[70%] bg-[#0A0A0A] text-white p-4 rounded-none sm:rounded-[4px] text-[15px] leading-relaxed whitespace-pre-wrap break-words">
+                    {pendingMessage.text}
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 max-w-[70%]">
+                  <div className="w-8 h-8 rounded-full bg-[#0A0A0A] text-white flex items-center justify-center shrink-0 text-sm select-none">
+                    {role.emoji}
+                  </div>
+                  <div className="bg-white border border-[#E5E5E5] rounded-none sm:rounded-[4px] p-4 text-[#0A0A0A] text-[15px]">
+                    <span className="inline-flex items-center gap-1.5 py-1">
+                      <span className="w-1.5 h-1.5 bg-[#0A0A0A] rounded-full animate-bounce [animation-duration:900ms]" />
+                      <span className="w-1.5 h-1.5 bg-[#0A0A0A] rounded-full animate-bounce [animation-duration:900ms] [animation-delay:150ms]" />
+                      <span className="w-1.5 h-1.5 bg-[#0A0A0A] rounded-full animate-bounce [animation-duration:900ms] [animation-delay:300ms]" />
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Streaming indicator: three animated dots before the first token arrives */}
+            {showDotsIndicator && (
               <div className="flex items-start gap-3 max-w-[70%]">
                 <div className="w-8 h-8 rounded-full bg-[#0A0A0A] text-white flex items-center justify-center shrink-0 text-sm select-none">
                   {role.emoji}

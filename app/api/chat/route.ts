@@ -26,6 +26,9 @@ export async function POST(req: Request) {
 
     let systemPrompt = role.systemPrompt;
 
+    // Conciseness & style instructions
+    systemPrompt += `\n\nKeep responses concise and conversational — 2 to 4 short paragraphs maximum. Write like you are texting a knowledgeable friend, not writing a medical report. Never use headers or bullet points unless absolutely necessary. Be direct and warm.`;
+
     // Fetch active learned knowledge from Supabase (specific role or global '*')
     try {
       const supabase = await createServerComponentClient();
