@@ -73,6 +73,7 @@ export default async function PickRolePage() {
             {[
               { label: "Platform", href: "/#platform" },
               { label: "Experts", href: "/pick" },
+              { label: "Admin", href: "/admin" },
               { label: "Workflow", href: "/#workflow" },
               { label: "Integrations", href: "/#integrations" },
               { label: "Live", href: "/#live" },
