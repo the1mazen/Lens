@@ -50,7 +50,11 @@ export default function LoginPage() {
         })
 
         if (error) {
-          if (error.message.toLowerCase().includes("email")) {
+          if (error.message.toLowerCase().includes("failed to fetch")) {
+            setGeneralError(
+              "Unable to reach Supabase. Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in your environment variables and your Supabase project is active."
+            )
+          } else if (error.message.toLowerCase().includes("email")) {
             setEmailError(error.message)
           } else if (
             error.message.toLowerCase().includes("password") ||
@@ -74,9 +78,16 @@ export default function LoginPage() {
         })
 
         if (error) {
-          if (error.message.toLowerCase().includes("email")) {
+          if (error.message.toLowerCase().includes("failed to fetch")) {
+            setGeneralError(
+              "Unable to reach Supabase. Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in your environment variables and your Supabase project is active."
+            )
+          } else if (error.message.toLowerCase().includes("email")) {
             setEmailError(error.message)
-          } else if (error.message.toLowerCase().includes("password")) {
+          } else if (
+            error.message.toLowerCase().includes("password") ||
+            error.message.toLowerCase().includes("credential")
+          ) {
             setPasswordError(error.message)
           } else {
             setGeneralError(error.message)
@@ -92,7 +103,14 @@ export default function LoginPage() {
         }
       }
     } catch (err: any) {
-      setGeneralError(err.message || "An unexpected error occurred.")
+      const msg = err?.message || ""
+      if (msg.toLowerCase().includes("failed to fetch")) {
+        setGeneralError(
+          "Unable to reach Supabase. Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in your environment variables and your Supabase project is active."
+        )
+      } else {
+        setGeneralError(msg || "An unexpected error occurred.")
+      }
     } finally {
       setLoading(false)
     }
