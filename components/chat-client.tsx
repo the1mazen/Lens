@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from "react"
 import Link from "next/link"
 import { useChat } from "ai/react"
+import { generateId } from "ai"
 import { Role } from "@/lib/roles"
 
 interface ChatClientProps {
@@ -12,6 +13,7 @@ interface ChatClientProps {
 export function ChatClient({ role }: ChatClientProps) {
   const [showRateLimitBanner, setShowRateLimitBanner] = useState(false)
   const [isAugmenting, setIsAugmenting] = useState(false)
+  const [originalMessages, setOriginalMessages] = useState<Record<string, string>>({})
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -91,23 +93,33 @@ export function ChatClient({ role }: ChatClientProps) {
 
   const handleCustomSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
-    const userText = input.trim()
-    if (!userText || isLoading || isAugmenting) return
+    const originalMessage = input.trim()
+    if (!originalMessage || isLoading || isAugmenting) return
 
+    // Immediately clear input for responsive feel
     setInput("")
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto"
     }
 
+    // Generate unique ID for this user message
+    const messageId = generateId()
+
+    // Store original message for UI rendering
+    setOriginalMessages((prev) => ({
+      ...prev,
+      [messageId]: originalMessage,
+    }))
+
     setIsAugmenting(true)
-    let messageToSend = userText
+    let augmentedPrompt = originalMessage
 
     try {
       const res = await fetch("/api/augment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userMessage: userText,
+          userMessage: originalMessage,
           roleName: role.name,
         }),
       })
@@ -115,7 +127,7 @@ export function ChatClient({ role }: ChatClientProps) {
       if (res.ok) {
         const data = await res.json()
         if (data.augmentedPrompt) {
-          messageToSend = data.augmentedPrompt
+          augmentedPrompt = data.augmentedPrompt
         }
       }
     } catch (err) {
@@ -124,9 +136,12 @@ export function ChatClient({ role }: ChatClientProps) {
       setIsAugmenting(false)
     }
 
+    // Submit the augmented prompt to useChat for LLM inference,
+    // keeping the generated messageId matching our originalMessages map
     append({
+      id: messageId,
       role: "user",
-      content: messageToSend,
+      content: augmentedPrompt,
     })
   }
 
@@ -172,7 +187,10 @@ export function ChatClient({ role }: ChatClientProps) {
           {/* Right: button "← EXPERTS" */}
           <Link
             href="/pick"
-            onClick={() => setMessages([])}
+            onClick={() => {
+              setMessages([])
+              setOriginalMessages({})
+            }}
             className="bg-[#0A0A0A] text-white text-xs uppercase tracking-widest px-3.5 sm:px-4 py-2 font-medium rounded-none sm:rounded-sm hover:bg-black/90 transition-colors shrink-0"
           >
             ← EXPERTS
@@ -196,10 +214,13 @@ export function ChatClient({ role }: ChatClientProps) {
               const isUser = m.role === "user"
 
               if (isUser) {
+                // Render the original user-typed message, keeping augmentation invisible to user
+                const displayContent = originalMessages[m.id] || m.content
+
                 return (
                   <div key={m.id} className="flex justify-end">
                     <div className="max-w-[70%] bg-[#0A0A0A] text-white p-4 rounded-none sm:rounded-[4px] text-[15px] leading-relaxed whitespace-pre-wrap break-words">
-                      {m.content}
+                      {displayContent}
                     </div>
                   </div>
                 )
