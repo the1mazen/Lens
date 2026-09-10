@@ -198,7 +198,7 @@ export function ChatClient({ role }: ChatClientProps) {
       (lastMessage.role === "assistant" && !lastMessage.content))
 
   return (
-    <div className="h-[100dvh] max-h-[100dvh] overflow-hidden flex flex-col bg-[#F5F5F0] text-[#0A0A0A] font-sans antialiased">
+    <div className="h-[100dvh] max-h-[100dvh] overflow-hidden flex flex-col bg-[#F5F5F0] text-[#0A0A0A] font-sans antialiased animate-in fade-in duration-500">
       {/* ── HEADER (in navbar or just below it) ─────────────────────────── */}
       <header className="shrink-0 bg-[#F5F5F0] border-b border-[#E5E5E5] z-30">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-14 md:h-16 flex items-center justify-between gap-3">
