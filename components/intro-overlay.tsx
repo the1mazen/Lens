@@ -4,6 +4,9 @@ import React, { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Role } from "@/lib/roles"
 
+// Reveal timestamp for Dr. Seryn (therapist)
+const SERYN_VIDEO_REVEAL_TIME = 1.20
+
 interface IntroOverlayProps {
   role: Role
   onClose?: () => void
@@ -13,6 +16,8 @@ export function IntroOverlay({ role }: IntroOverlayProps) {
   const router = useRouter()
   const videoRef = useRef<HTMLVideoElement>(null)
 
+  const isTherapist = role.id === "therapist"
+
   const [videoReady, setVideoReady] = useState(false)
   const videoReadyRef = useRef(false)
   const [videoError, setVideoError] = useState(false)
@@ -21,8 +26,14 @@ export function IntroOverlay({ role }: IntroOverlayProps) {
   const [phase, setPhase] = useState<"in" | "hold" | "out" | "gap">("in")
   const [sequenceDone, setSequenceDone] = useState(false)
 
+  // Standard experts video states
   const [showVideo, setShowVideo] = useState(false)
   const [videoStarted, setVideoStarted] = useState(false)
+
+  // Dr. Seryn specific states
+  const [serynAudioStarted, setSerynAudioStarted] = useState(false)
+  const [serynRevealed, setSerynRevealed] = useState(false)
+
   const [isFadingToChat, setIsFadingToChat] = useState(false)
   const hasTriggeredNav = useRef(false)
 
@@ -39,7 +50,7 @@ export function IntroOverlay({ role }: IntroOverlayProps) {
     router.prefetch(`/chat/${role.id}`)
   }, [role.id, router])
 
-  // FIX 3: Smooth exit to chat — fade out video to #F5F5F0 and navigate without flicker
+  // Smooth exit to chat — fade out video to #F5F5F0 and navigate without flicker
   const triggerTransitionToChat = () => {
     if (hasTriggeredNav.current) return
     hasTriggeredNav.current = true
@@ -55,7 +66,7 @@ export function IntroOverlay({ role }: IntroOverlayProps) {
     }
 
     // 400ms fade transition to #F5F5F0, then route push.
-    // Note: We deliberately do NOT unmount the overlay so /pick never flashes.
+    // Overlay stays mounted so /pick never flashes.
     setTimeout(() => {
       router.push(`/chat/${role.id}`)
     }, 400)
@@ -70,13 +81,13 @@ export function IntroOverlay({ role }: IntroOverlayProps) {
   }
 
   const handleVideoError = () => {
-    console.warn(`Intro video for ${role.name} not found or failed to load. Will proceed to chat after sequence.`)
+    console.warn(`Intro video for ${role.name} not found or failed to load. Will proceed to chat.`)
     videoReadyRef.current = true
     setVideoReady(true)
     setVideoError(true)
   }
 
-  // FIX 1: Full sequence progression without skipping early
+  // Loading sequence progression
   useEffect(() => {
     if (sequenceDone) return
 
@@ -90,13 +101,18 @@ export function IntroOverlay({ role }: IntroOverlayProps) {
     } else if (phase === "hold") {
       if (msgIndex === 4) {
         // Message is "Ready."
-        if (videoReadyRef.current) {
-          // If video is already buffered, hold for 900ms then fade out
-          timer = setTimeout(() => {
-            setPhase("out")
-          }, 900)
+        if (isTherapist) {
+          // Dr. Seryn: Keep "Ready." showing on screen during audio-only phase.
+          // The transition out will be triggered at SERYN_VIDEO_REVEAL_TIME.
         } else {
-          // Video not ready yet: hold indefinitely until videoReady becomes true
+          // Standard experts
+          if (videoReadyRef.current) {
+            timer = setTimeout(() => {
+              setPhase("out")
+            }, 900)
+          } else {
+            // Video not ready yet: hold until videoReady becomes true
+          }
         }
       } else {
         // Normal hold for messages 0, 1, 2, 3: 900ms
@@ -108,7 +124,6 @@ export function IntroOverlay({ role }: IntroOverlayProps) {
       // Fade out: 400ms
       timer = setTimeout(() => {
         if (msgIndex === 4) {
-          // "Ready." has fully faded out — sequence is completely finished
           setSequenceDone(true)
         } else {
           setPhase("gap")
@@ -123,17 +138,17 @@ export function IntroOverlay({ role }: IntroOverlayProps) {
     }
 
     return () => clearTimeout(timer)
-  }, [msgIndex, phase, sequenceDone])
+  }, [msgIndex, phase, sequenceDone, isTherapist])
 
-  // If holding on "Ready." when video becomes ready, complete the hold and fade out
+  // STANDARD EXPERTS: If holding on "Ready." when video becomes ready, complete the hold and fade out
   useEffect(() => {
-    if (msgIndex === 4 && phase === "hold" && videoReady) {
+    if (!isTherapist && msgIndex === 4 && phase === "hold" && videoReady) {
       const timer = setTimeout(() => {
         setPhase("out")
       }, 900)
       return () => clearTimeout(timer)
     }
-  }, [videoReady, msgIndex, phase])
+  }, [isTherapist, videoReady, msgIndex, phase])
 
   // Watchdog: If video buffering hangs on "Ready." for > 7s, mark as ready so user proceeds
   useEffect(() => {
@@ -148,11 +163,10 @@ export function IntroOverlay({ role }: IntroOverlayProps) {
     }
   }, [msgIndex, phase, videoReady])
 
-  // FIX 1: Only play AFTER sequenceDone AND videoReady are both true
+  // STANDARD EXPERTS: Start video playback only after sequenceDone AND videoReady are both true
   useEffect(() => {
-    if (sequenceDone && videoReady && !videoStarted) {
+    if (!isTherapist && sequenceDone && videoReady && !videoStarted) {
       if (videoError) {
-        // If the video errored (e.g. file missing), smoothly transition to chat
         triggerTransitionToChat()
         return
       }
@@ -171,9 +185,86 @@ export function IntroOverlay({ role }: IntroOverlayProps) {
         }
       }
     }
-  }, [sequenceDone, videoReady, videoStarted, videoError])
+  }, [isTherapist, sequenceDone, videoReady, videoStarted, videoError])
 
+  // DR. SERYN (PHASE 1): Start audio-only playback immediately when "Ready." appears
+  useEffect(() => {
+    if (isTherapist && msgIndex === 4 && phase === "hold" && videoReady && !serynAudioStarted) {
+      if (videoError) {
+        triggerTransitionToChat()
+        return
+      }
+
+      setSerynAudioStarted(true)
+
+      if (videoRef.current) {
+        videoRef.current.muted = false
+        const playPromise = videoRef.current.play()
+        if (playPromise !== undefined) {
+          playPromise.catch((err) => {
+            console.warn("Dr. Seryn audio play blocked or failed:", err)
+            triggerTransitionToChat()
+          })
+        }
+      }
+    }
+  }, [isTherapist, msgIndex, phase, videoReady, serynAudioStarted, videoError])
+
+  // DR. SERYN (PHASE 2): Frame-accurate check for currentTime >= SERYN_VIDEO_REVEAL_TIME (1.20s)
+  useEffect(() => {
+    if (!isTherapist || !serynAudioStarted || serynRevealed) return
+
+    let rafId: number
+    const checkTime = () => {
+      if (videoRef.current && videoRef.current.currentTime >= SERYN_VIDEO_REVEAL_TIME) {
+        setSerynRevealed(true)
+        return
+      }
+      rafId = requestAnimationFrame(checkTime)
+    }
+
+    rafId = requestAnimationFrame(checkTime)
+    return () => cancelAnimationFrame(rafId)
+  }, [isTherapist, serynAudioStarted, serynRevealed])
+
+  const handleTimeUpdate = () => {
+    if (isTherapist && serynAudioStarted && !serynRevealed) {
+      if (videoRef.current && videoRef.current.currentTime >= SERYN_VIDEO_REVEAL_TIME) {
+        setSerynRevealed(true)
+      }
+    }
+  }
+
+  // Pulsing "Ready." state while buffering
   const isPulsingReady = msgIndex === 4 && phase === "hold" && !videoReady
+
+  // Determine video visibility and opacity
+  const videoOpacityClass = isTherapist
+    ? isFadingToChat
+      ? "opacity-0 pointer-events-none transition-opacity duration-400 ease-in-out"
+      : serynRevealed
+      ? "opacity-100 cursor-pointer transition-opacity duration-400 ease-in-out"
+      : "opacity-0 pointer-events-none"
+    : isFadingToChat
+    ? "opacity-0 pointer-events-none transition-opacity duration-400 ease-in-out"
+    : showVideo
+    ? "opacity-100 cursor-pointer transition-opacity duration-500 ease-in-out"
+    : "opacity-0 pointer-events-none"
+
+  const videoVisibilityStyle = isTherapist
+    ? serynRevealed
+      ? ("visible" as const)
+      : ("hidden" as const)
+    : undefined
+
+  // Determine loading overlay visibility
+  const loadingOverlayHidden = isTherapist
+    ? serynRevealed || isFadingToChat
+    : showVideo || isFadingToChat
+
+  const loadingOverlayDurationClass = isTherapist
+    ? "duration-400"
+    : "duration-500"
 
   return (
     <div
@@ -216,17 +307,12 @@ export function IntroOverlay({ role }: IntroOverlayProps) {
       <video
         ref={videoRef}
         src={`/characters/${role.id}/intro.mp4`}
-        className={`intro-video-element absolute transition-opacity duration-500 ease-in-out ${
-          isFadingToChat
-            ? "opacity-0 pointer-events-none"
-            : showVideo
-            ? "opacity-100 cursor-pointer"
-            : "opacity-0 pointer-events-none"
-        }`}
+        className={`intro-video-element absolute ${videoOpacityClass}`}
         style={{
           objectFit: "cover",
           objectPosition: "center center",
           transformOrigin: "center center",
+          visibility: videoVisibilityStyle,
         }}
         playsInline
         autoPlay={false}
@@ -236,13 +322,14 @@ export function IntroOverlay({ role }: IntroOverlayProps) {
         onCanPlayThrough={handleCanPlay}
         onLoadedData={handleCanPlay}
         onError={handleVideoError}
+        onTimeUpdate={handleTimeUpdate}
         onEnded={triggerTransitionToChat}
       />
 
       {/* ── CINEMATIC LOADING OVERLAY ────────────────────────────────────── */}
       <div
-        className={`absolute inset-0 z-10 flex items-center justify-center p-6 bg-[#F5F5F0] transition-opacity duration-500 ease-in-out ${
-          showVideo || isFadingToChat ? "opacity-0 pointer-events-none" : "opacity-100"
+        className={`absolute inset-0 z-10 flex items-center justify-center p-6 bg-[#F5F5F0] transition-opacity ${loadingOverlayDurationClass} ease-in-out ${
+          loadingOverlayHidden ? "opacity-0 pointer-events-none" : "opacity-100"
         }`}
       >
         <p
@@ -272,4 +359,4 @@ export function IntroOverlay({ role }: IntroOverlayProps) {
       />
     </div>
   )
-}
+}
